@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && cp src/favicon.svg dist/favicon.svg",
     "test": "tsx --test test/**/*.test.ts"
   },
   "dependencies": {
