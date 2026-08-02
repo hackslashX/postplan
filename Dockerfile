@@ -20,5 +20,5 @@ COPY skills ./skills
 RUN mkdir -p /data && chown node:node /data
 USER node
 ENV DATA_DIR=/data
-EXPOSE 3000
+EXPOSE 3000 3001
 CMD ["node", "dist/index.js"]

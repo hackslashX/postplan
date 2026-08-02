@@ -13,14 +13,14 @@ const text = (value: unknown) => ({ content: [{ type: "text" as const, text: JSO
 const fail = (error: unknown) => ({ content: [{ type: "text" as const, text: error instanceof Error ? error.message : "Unknown error" }], isError: true });
 const html = (value: string) => value.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-export function createMcpServer(service: ProjectService, publicBaseUrl: string) {
+export function createMcpServer(service: ProjectService, publicBaseUrl: string, mcpBaseUrl: string) {
   const server = new McpServer({ name: "postplan", version: "0.1.0" });
-  server.registerResource("usage", "postplan://usage", { mimeType: "text/markdown", description: "How to create, edit, and share Postplan projects." }, async () => ({ contents: [{ uri: "postplan://usage", mimeType: "text/markdown", text: `# Postplan workflow\n\nPublic base URL: ${publicBaseUrl}\nMCP endpoint: ${publicBaseUrl}/mcp\n\n1. Call \`list_ui_skills\` and \`get_ui_skill\` when you need design guidance. When using a \`style-*\` skill, also load \`better-accessibility\`, \`better-layout\`, \`better-typography\`, \`better-colors\`, \`better-writing\`, and \`better-ui\` before implementation.\n2. Call \`create_project\`. Keep \`write_key\` private; share only the returned \`view_url\` (it contains \`read_key\`).\n3. Call \`put_file\` for \`index.html\`, CSS, JavaScript, and text. Call \`put_binary_file\` for images or other base64 assets. Use relative links from \`index.html\`.\n4. Inspect before changing existing content with \`read_file\`. It can return a line range or literal/regex matches plus context.\n5. Make focused non-binary changes with \`apply_text_edits\`. Each \`old_text\` must be unique; include enough surrounding text to make it unique. Use \`put_file\` when replacing a whole file.\n6. Call \`list_files\` to inspect the project. The read key can read; the write key can read and modify.\n\nProjects are anonymous and have no recovery path: retain both keys.` }] }));
+  server.registerResource("usage", "postplan://usage", { mimeType: "text/markdown", description: "How to create, edit, and share Postplan projects." }, async () => ({ contents: [{ uri: "postplan://usage", mimeType: "text/markdown", text: `# Postplan workflow\n\nPublic base URL: ${publicBaseUrl}\nMCP endpoint: ${mcpBaseUrl}/mcp\n\n1. Call \`list_ui_skills\` and \`get_ui_skill\` when you need design guidance. When using a \`style-*\` skill, also load \`better-accessibility\`, \`better-layout\`, \`better-typography\`, \`better-colors\`, \`better-writing\`, and \`better-ui\` before implementation.\n2. Call \`create_project\`. Keep \`write_key\` private; share only the returned \`view_url\` (it contains \`read_key\`).\n3. Call \`put_file\` for \`index.html\`, CSS, JavaScript, and text. Call \`put_binary_file\` for images or other base64 assets. Use relative links from \`index.html\`.\n4. Inspect before changing existing content with \`read_file\`. It can return a line range or literal/regex matches plus context.\n5. Make focused non-binary changes with \`apply_text_edits\`. Each \`old_text\` must be unique; include enough surrounding text to make it unique. Use \`put_file\` when replacing a whole file.\n6. Call \`list_files\` to inspect the project. The read key can read; the write key can read and modify.\n\nProjects are anonymous and have no recovery path: retain both keys.` }] }));
   server.registerTool("list_ui_skills", { description: "List available UI design skills. Call this before designing a hosted HTML page, then use get_ui_skill for the relevant detailed guidance.", inputSchema: {} }, async () => text(uiSkills.map(({ id, name, overview }) => ({ id, name, overview }))));
   server.registerTool("get_ui_skill", { description: "Get detailed, practical UI guidance for one skill returned by list_ui_skills. When a style-* skill is selected, also load better-accessibility, better-layout, better-typography, better-colors, better-writing, and better-ui before designing the hosted page.", inputSchema: { skill_id: z.string().describe("A skill id from list_ui_skills") } }, async ({ skill_id }) => { const skill = findUiSkill(skill_id); return skill ? text(skill) : fail(`Unknown UI skill: ${skill_id}. Call list_ui_skills first.`); });
   server.registerTool("create_project",  { description: "Start here. Create an anonymous hosted project. Keep write_key private; retain both keys because projects cannot be recovered. write_key reads and changes files; read_key only reads and is embedded in the returned shareable view_url.", inputSchema: {} }, async () => {
     const project = service.createProject();
-    return text({ public_base_url: publicBaseUrl, mcp_url: `${publicBaseUrl}/mcp`, project_id: project.id, write_key: project.writeKey, read_key: project.readKey, view_url: `${publicBaseUrl}/view?project_id=${encodeURIComponent(project.id)}&key=${encodeURIComponent(project.readKey)}` });
+    return text({ public_base_url: publicBaseUrl, mcp_url: `${mcpBaseUrl}/mcp`, project_id: project.id, write_key: project.writeKey, read_key: project.readKey, view_url: `${publicBaseUrl}/view?project_id=${encodeURIComponent(project.id)}&key=${encodeURIComponent(project.readKey)}` });
   });
   server.registerTool("put_file", { description: "Create or replace one complete UTF-8 text file, such as index.html, style.css, or app.js. Use relative asset paths in HTML. Use read_file plus apply_text_edits for focused changes; use put_binary_file for images and other binary assets.", inputSchema: { project_id: z.string(), write_key: z.string(), path: z.string(), content: z.string(), mime_type: z.string().optional() } }, async ({ project_id, write_key, path: filePath, content, mime_type }) => {
     try { await service.putFile(project_id, write_key, filePath, Buffer.from(content), mime_type ?? mimeFor(filePath)); return text({ ok: true, path: filePath, bytes: Buffer.byteLength(content) }); } catch (e) { return fail(e); }
@@ -46,18 +46,24 @@ export function createMcpServer(service: ProjectService, publicBaseUrl: string) 
   return server;
 }
 
-export function createApp(service: ProjectService, publicBaseUrl: string) {
-  const favicon = readFileSync(new URL("./favicon.svg", import.meta.url));
+export function createMcpApp(service: ProjectService, publicBaseUrl: string, mcpBaseUrl: string) {
   const app = express();
   app.use(express.json({ limit: "25mb" }));
   app.post("/mcp", async (req, res) => {
-    const server = createMcpServer(service, publicBaseUrl);
+    const server = createMcpServer(service, publicBaseUrl, mcpBaseUrl);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     try { await server.connect(transport); await transport.handleRequest(req, res, req.body); res.on("close", () => { void transport.close(); void server.close(); }); }
     catch (e) { console.error(e); if (!res.headersSent) res.status(500).json({ jsonrpc: "2.0", error: { code: -32603, message: "Internal server error" }, id: null }); }
   });
   app.all("/mcp", (_req, res) => res.status(405).json({ error: "Use POST for MCP requests" }));
-  app.get("/favicon.svg", (_req, res) => res.type("image/svg+xml").set("Cache-Control", "public, max-age=86400").send(favicon));
+  return app;
+}
+
+export function createApp(service: ProjectService, publicBaseUrl: string) {
+  const favicon = readFileSync(new URL("./favicon.svg", import.meta.url));
+  const app = express();
+  // Browsers may request the conventional .ico path even when pages declare the SVG icon.
+  app.get(["/favicon.svg", "/favicon.ico"], (_req, res) => res.type("image/svg+xml").set("Cache-Control", "public, max-age=86400").send(favicon));
   app.get("/", (_req, res) => {
     res.set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
     res.type("html").send(`<!doctype html>
@@ -86,7 +92,12 @@ You    → open the link, anywhere</pre><footer>Anonymous projects · Read-only 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = process.env.DATA_DIR ?? path.resolve(moduleDir, "../data");
 mkdirSync(dataDir, { recursive: true });
-const port = Number(process.env.PORT ?? 3000);
-const base = (process.env.PUBLIC_BASE_URL ?? `http://localhost:${port}`).replace(/\/$/, "");
+const httpPort = Number(process.env.PORT ?? 3000);
+const mcpPort = Number(process.env.MCP_PORT ?? 3001);
+const publicBaseUrl = (process.env.PUBLIC_BASE_URL ?? `http://localhost:${httpPort}`).replace(/\/$/, "");
+const mcpBaseUrl = (process.env.MCP_BASE_URL ?? `http://localhost:${mcpPort}`).replace(/\/$/, "");
 const service = new ProjectService(new ProjectRepository(path.join(dataDir, "postplan.db")), new LocalFileStorage(path.join(dataDir, "assets")));
-if (process.env.NODE_ENV !== "test") createApp(service, base).listen(port, () => console.log(`Postplan listening at ${base} (MCP: ${base}/mcp)`));
+if (process.env.NODE_ENV !== "test") {
+  createApp(service, publicBaseUrl).listen(httpPort, () => console.log(`Postplan viewer listening at ${publicBaseUrl}`));
+  createMcpApp(service, publicBaseUrl, mcpBaseUrl).listen(mcpPort, () => console.log(`Postplan MCP listening at ${mcpBaseUrl}/mcp`));
+}
