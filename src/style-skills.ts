@@ -1,6 +1,14 @@
 import type { UiSkill } from "./ui-skills.js";
 
-const style = (id: string, name: string, overview: string, guidance: string): UiSkill => ({ id, name, overview, guidance, source: "Postplan built-in style guide" });
+const companionGuidance = `\n\n## Required companion skill pass\n\nA style direction is an art direction, not a replacement for interface craft. Before implementing a page with this style, load and apply these companion UI skills: \`better-accessibility\`, \`better-layout\`, \`better-typography\`, \`better-colors\`, \`better-writing\`, and \`better-ui\`. Use each skill for the rules it owns; resolve conflicts in favor of accessibility, usability, and the project’s established conventions. Do not treat a visually faithful result as complete until it has semantic structure, keyboard and focus support, responsive layout, readable type, measured color contrast, and clear copy.\n\nUse \`better-interface\` when the task asks for a holistic UI review; it orchestrates those companion skills rather than replacing them.`;
+
+const style = (id: string, name: string, overview: string, guidance: string): UiSkill => ({
+  id,
+  name,
+  overview,
+  guidance: `${guidance}${companionGuidance}`,
+  source: "Postplan built-in style guide"
+});
 
 export const styleSkills: UiSkill[] = [
   style("style-editorial-newspaper", "Style: editorial newspaper", "Information-dense, typographic storytelling with strong hierarchy and disciplined rules.", `Use a warm paper background (#f5f1e8), ink-black text (#1b1a18), and one muted signal color such as oxblood or cobalt. Build with a centered max-width, hairline rules, generous headline margins, narrow reading columns, pull quotes, captions, and occasional two-column sections.\n\nTypography: a high-contrast serif for display/headlines; a practical serif or sans-serif for body. Use sentence case, tight headline tracking, 1.5–1.7 body line-height, and a 60–70 character measure. Avoid cards, pills, gradients, and oversized rounded corners. Example: a research explainer, long-form case study, or release note.`),
