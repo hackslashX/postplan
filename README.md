@@ -36,7 +36,7 @@ The viewer/index listener uses `PORT` (default `3000`). The MCP listener uses `M
 - `create_project` — returns `project_id`, `write_key`, `read_key`, and `view_url`.
 - `put_file` — create/update UTF-8 HTML, CSS, JS, or text files.
 - `put_binary_file` — create/update a base64 binary asset, including images.
-- `read_file` — get a file, selected line range, or literal/regex matching lines with context. Binary files are returned as base64.
+- `read_file` — get a file, selected line range, or literal matching lines with context. Binary files are returned as base64.
 - `apply_text_edits` — atomically replace exact, unique fragments in a text file.
 - `list_files` — inspect uploaded files.
 - `delete_file` — remove a file.
@@ -44,7 +44,7 @@ The viewer/index listener uses `PORT` (default `3000`). The MCP listener uses `M
 
 The UI skills are vendored under `skills/jakubkrehel/` from that project's MIT-licensed source; its license is retained at `skills/jakubkrehel/LICENSE`.
 
-`apply_text_edits` is safe for agent edits: every `old_text` must occur exactly once in the original file, and overlapping edits are rejected. Use `read_file` with `start_line`/`line_count` or `query`, `regex`, and `context_lines` to obtain enough context first.
+`apply_text_edits` is safe for agent edits: every `old_text` must occur exactly once in the original file, and overlapping edits are rejected. Use `read_file` with `start_line`/`line_count` or a literal `query` and `context_lines` to obtain enough context first.
 
 The browser URL is:
 
@@ -56,7 +56,7 @@ Use relative paths in `index.html`, e.g. `<link rel="stylesheet" href="style.css
 
 ## Security model
 
-Keys are random 256-bit values. Only SHA-256 digests are stored in SQLite. The read key can only read; the write key can read and alter files. Do not put either key in logs. Hosted pages run in a sandboxed iframe, but project authors control their own JavaScript: only host content you trust.
+Keys are random 256-bit values. Only SHA-256 digests are stored in SQLite. The read key can only read; the write key can read and alter files. Do not put either key in logs. Hosted pages receive a sandboxing CSP whether viewed in the viewer iframe or opened directly, but project authors still control their own JavaScript: only host content you trust.
 
 Put both listeners behind TLS as appropriate. Configure the MCP reverse proxy to accept a 25 MB request body at minimum if binary uploads are needed. The viewer listener does not expose `/mcp`.
 

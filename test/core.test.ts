@@ -40,3 +40,18 @@ test("files can be deleted", async () => {
   assert.equal(await projects.deleteFile(project.id, project.writeKey, "style.css"), true);
   assert.equal(await projects.deleteFile(project.id, project.writeKey, "style.css"), false);
 });
+
+test("project files remain sandboxed when opened directly", async (t) => {
+  process.env.NODE_ENV = "test";
+  const { createApp } = await import("../src/index.js");
+  const projects = await service(); const project = projects.createProject();
+  await projects.putFile(project.id, project.writeKey, "index.html", Buffer.from("<script>document.body.textContent = 'Plan'</script>"), "text/html");
+  const server = createApp(projects, "http://example.test").listen(0);
+  t.after(() => server.close());
+  await new Promise<void>(resolve => server.once("listening", resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const response = await fetch(`http://127.0.0.1:${address.port}/project/${project.id}/${project.readKey}/index.html`);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-security-policy"), "sandbox allow-scripts allow-forms allow-modals allow-popups");
+});
