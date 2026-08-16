@@ -29,6 +29,18 @@ https://mcp.postplan.internal/mcp
 
 For local development: `http://localhost:3001/mcp`.
 
+## UI guidance workflow
+
+Postplan exposes purpose-driven UI guidance in addition to its project file tools:
+
+1. Resolve the page purpose, audience, primary task or takeaway, and content shape.
+2. Call `list_layout_archetypes` and choose the page structure that matches that task.
+3. Call `list_ui_skills` and choose one `style-*` visual direction.
+4. Call `compose_ui_brief` with both selections. Its result is the implementation contract for hierarchy, tokens, component grammar, responsive behavior, and verification.
+5. Use `list_ui_references` and `get_ui_reference` only when a specialist topic needs more depth. Use `get_ui_skill` for a complete top-level style or craft guide and `better-interface` for a holistic review.
+
+The older `list_ui_skills` → `get_ui_skill` workflow remains supported, but composed briefs are preferred for new pages and material redesigns.
+
 The viewer/index listener uses `PORT` (default `3000`). The MCP listener uses `MCP_PORT` (default `3001`). `PUBLIC_BASE_URL` is the viewer's externally reachable URL; `MCP_BASE_URL` is the MCP listener's externally reachable URL. Deploy them behind separate network policies or reverse proxies; do not route `/mcp` through the public viewer listener.
 
 ## Tools
@@ -40,7 +52,10 @@ The viewer/index listener uses `PORT` (default `3000`). The MCP listener uses `M
 - `apply_text_edits` — atomically replace exact, unique fragments in a text file.
 - `list_files` — inspect uploaded files.
 - `delete_file` — remove a file.
+- `list_layout_archetypes` — discover purpose-driven structures for marketing, application, onboarding, settings, editorial, dashboard, collection, and plan pages.
 - `list_ui_skills` / `get_ui_skill` — discover and load vendored UI-design skills from [jakubkrehel/skills](https://github.com/jakubkrehel/skills), plus Postplan style directions (editorial, modern product, gallery, old internet, retro futurist, quiet minimal, and data lab).
+- `compose_ui_brief` — combine intent, one layout archetype, and one style into concise build guidance and a cohesion checklist.
+- `list_ui_references` / `get_ui_reference` — retrieve the detailed Markdown references linked by the specialist skills.
 
 The UI skills are vendored under `skills/jakubkrehel/` from that project's MIT-licensed source; its license is retained at `skills/jakubkrehel/LICENSE`.
 
